@@ -44,29 +44,29 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px 28px 18px;
+    padding: 24px 32px 22px;
     border-bottom: 1px solid var(--border);
     background: var(--panel);
     gap: 16px;
     flex-shrink: 0;
   }
 
-  .header-left { display: flex; align-items: center; gap: 18px; }
+  .header-left { display: flex; align-items: center; gap: 22px; }
 
   .mbta-logo {
-    width: 54px; height: 54px; border-radius: 50%;
+    width: 66px; height: 66px; border-radius: 50%;
     background: var(--blue);
     display: flex; align-items: center; justify-content: center;
-    font-size: 24px; font-weight: 700; color: #fff;
+    font-size: 30px; font-weight: 700; color: #fff;
     letter-spacing: -1px; flex-shrink: 0;
   }
 
-  .stop-info h1 { font-size: 34px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.1; }
-  .stop-info .stop-id { font-family: 'Share Tech Mono', monospace; font-size: 15px; color: var(--dim); margin-top: 3px; letter-spacing: 0.08em; }
+  .stop-info h1 { font-size: 42px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.1; }
+  .stop-info .stop-id { font-family: 'Share Tech Mono', monospace; font-size: 17px; color: var(--dim); margin-top: 4px; letter-spacing: 0.08em; }
 
   .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-  .clock { font-family: 'Share Tech Mono', monospace; font-size: 48px; color: var(--accent); letter-spacing: 0.05em; line-height: 1; }
-  .date-display { font-family: 'Share Tech Mono', monospace; font-size: 16px; color: var(--dim); letter-spacing: 0.06em; }
+  .clock { font-family: 'Share Tech Mono', monospace; font-size: 58px; color: var(--accent); letter-spacing: 0.05em; line-height: 1; }
+  .date-display { font-family: 'Share Tech Mono', monospace; font-size: 18px; color: var(--dim); letter-spacing: 0.06em; }
 
   /* ── STATUS PILL (now in footer) ── */
   .status-pill {
@@ -81,38 +81,38 @@
   .weather-bar {
     background: #0d1014;
     border-bottom: 2px solid var(--border);
-    padding: 16px 28px;
+    padding: 20px 32px;
     display: flex; align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
   }
 
-  .weather-bar .w-left { display: flex; align-items: center; gap: 18px; }
-  .weather-bar .w-right { display: flex; align-items: center; gap: 36px; }
+  .weather-bar .w-left { display: flex; align-items: center; gap: 22px; }
+  .weather-bar .w-right { display: flex; align-items: center; gap: 40px; }
 
-  .weather-bar .w-divider { width: 1px; height: 28px; background: var(--border); }
+  .weather-bar .w-divider { width: 1px; height: 36px; background: var(--border); }
 
   .weather-bar .w-location {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 16px; letter-spacing: 0.12em;
+    font-size: 17px; letter-spacing: 0.12em;
     color: var(--dim); text-transform: uppercase;
   }
 
-  .weather-bar .w-icon { font-size: 48px; line-height: 1; }
+  .weather-bar .w-icon { font-size: 52px; line-height: 1; }
 
   .weather-bar .w-temp {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 48px; color: var(--accent); letter-spacing: -1px; line-height: 1;
+    font-size: 52px; color: var(--accent); letter-spacing: -1px; line-height: 1;
   }
 
-  .weather-bar .w-temp sup { font-size: 20px; vertical-align: super; color: var(--dim); }
+  .weather-bar .w-temp sup { font-size: 22px; vertical-align: super; color: var(--dim); }
 
   .weather-bar .w-condition {
-    font-size: 24px; font-weight: 600; letter-spacing: 0.08em;
+    font-size: 28px; font-weight: 600; letter-spacing: 0.08em;
     text-transform: uppercase; color: var(--text);
   }
 
-  .weather-bar .w-stat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .weather-bar .w-stat { display: flex; flex-direction: column; align-items: center; gap: 5px; }
 
   .weather-bar .w-stat-label {
     font-family: 'Share Tech Mono', monospace;
@@ -121,7 +121,7 @@
 
   .weather-bar .w-stat-value {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 22px; color: var(--text); letter-spacing: 0.04em;
+    font-size: 24px; color: var(--text); letter-spacing: 0.04em;
   }
 
   /* ── CONTENT ROW ── */
@@ -442,15 +442,14 @@ async function fetchDepartures() {
     });
 
     // ── SLOT ALLOCATION ──────────────────────────────────────
-    // Strategy: guarantee at least 1 train per direction (inbound + outbound),
-    // then fill remaining slots with buses (max 3), then any leftover trains.
-    // Total cap: 5 displayed rows.
+    // 3 train slots (guaranteed: 1 inbound + 1 outbound, then 1 more)
+    // 3 bus slots max
+    // Total cap: 6, all sorted chronologically
 
-    // Separate into trains/CR and buses
     const trainPreds = predictions.filter(p => p.routeType <= 2 && p.minsAway <= 60);
     const busPreds   = predictions.filter(p => p.routeType === 3 && p.minsAway <= 60);
 
-    // Guarantee 1 train per direction (dir 0 and dir 1)
+    // Guarantee 1 train per direction
     const guaranteed = [];
     const seenTrainDir = {};
     for (const p of trainPreds) {
@@ -463,17 +462,17 @@ async function fetchDepartures() {
     // Up to 3 buses
     const buses = busPreds.slice(0, 3);
 
-    // Fill remaining slots (5 total minus guaranteed trains minus buses) with more trains
+    // Fill up to 3 train slots total (1 extra beyond the 2 guaranteed)
     const usedIds = new Set(guaranteed.map(p => p.routeId + '_' + p.dirId + '_' + p.secondsAway));
     const extraTrains = trainPreds.filter(p => !usedIds.has(p.routeId + '_' + p.dirId + '_' + p.secondsAway));
-    const slotsLeft = Math.max(0, 5 - guaranteed.length - buses.length);
-    const extras = extraTrains.slice(0, slotsLeft);
+    const trainSlotsLeft = Math.max(0, 3 - guaranteed.length);
+    const extras = extraTrains.slice(0, trainSlotsLeft);
 
-    // Merge and sort chronologically
+    // Merge and sort chronologically, cap at 6
     const filtered = [...guaranteed, ...extras, ...buses]
       .sort((a, b) => a.secondsAway - b.secondsAway);
 
-    renderBoard(filtered.slice(0, 5));
+    renderBoard(filtered.slice(0, 6));
     setStatus('live', 'LIVE');
     document.getElementById('update-time').textContent =
       `Last updated: ${now.toLocaleTimeString('en-US', { hour12: false })}`;
