@@ -108,8 +108,11 @@
   .weather-bar .w-temp sup { font-size: 22px; vertical-align: super; color: var(--dim); }
 
   .weather-bar .w-condition {
-    font-size: 28px; font-weight: 600; letter-spacing: 0.08em;
+    font-size: clamp(14px, 2.2vw, 28px); font-weight: 600; letter-spacing: 0.08em;
     text-transform: uppercase; color: var(--text);
+    flex: 1; text-align: center;
+    white-space: normal; word-break: break-word;
+    line-height: 1.2; padding: 0 12px;
   }
 
   .weather-bar .w-stat { display: flex; flex-direction: column; align-items: center; gap: 5px; }
