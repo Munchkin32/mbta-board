@@ -68,38 +68,10 @@
   .clock { font-family: 'Share Tech Mono', monospace; font-size: 48px; color: var(--accent); letter-spacing: 0.05em; line-height: 1; }
   .date-display { font-family: 'Share Tech Mono', monospace; font-size: 16px; color: var(--dim); letter-spacing: 0.06em; }
 
-  /* ── CONFIG BAR ── */
-  .config-bar {
-    background: #0d1014;
-    border-bottom: 1px solid var(--border);
-    padding: 10px 28px;
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-    flex-shrink: 0;
-  }
-
-  .config-bar label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); }
-
-  .config-bar input {
-    background: var(--border); border: 1px solid #2a3038;
-    color: var(--text); font-family: 'Share Tech Mono', monospace;
-    font-size: 14px; padding: 6px 12px; border-radius: 3px;
-    outline: none; transition: border-color 0.2s; width: 200px;
-  }
-  .config-bar input:focus { border-color: var(--blue); }
-
-  .btn {
-    background: var(--blue); color: #fff; border: none;
-    font-family: 'Oswald', sans-serif; font-size: 14px; font-weight: 600;
-    letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 7px 20px; border-radius: 3px; cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
-  }
-  .btn:hover { background: #0050c8; }
-  .btn:active { transform: scale(0.97); }
-
+  /* ── STATUS PILL (now in footer) ── */
   .status-pill {
-    margin-left: auto; font-family: 'Share Tech Mono', monospace;
-    font-size: 12px; padding: 4px 12px; border-radius: 12px; letter-spacing: 0.06em;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px; padding: 4px 12px; border-radius: 12px; letter-spacing: 0.06em;
   }
   .status-pill.live    { background: rgba(0,196,106,0.15); color: var(--arriving); border: 1px solid rgba(0,196,106,0.3); }
   .status-pill.error   { background: rgba(218,41,28,0.15); color: #f07070; border: 1px solid rgba(218,41,28,0.3); }
@@ -270,14 +242,7 @@
   </div>
 </header>
 
-<div class="config-bar">
-  <label>STOP ID</label>
-  <input type="text" id="stop-input" placeholder="e.g. place-mlmnl" value="place-mlmnl">
-  <label>API KEY</label>
-  <input type="text" id="api-key-input" placeholder="Optional">
-  <button class="btn" onclick="loadStop()">▶ LOAD</button>
-  <span class="status-pill loading" id="status-pill">STANDBY</span>
-</div>
+
 
 <div class="weather-bar">
   <div class="w-left">
@@ -317,13 +282,15 @@
 
 <footer>
   <div class="update-time" id="update-time">Last updated: —</div>
+  <span class="status-pill loading" id="status-pill">STANDBY</span>
 </footer>
 
 <script>
 const MBTA_API = 'https://api-v3.mbta.com';
+const HARDCODED_STOP = 'place-mlmnl';
 let weatherLat = 42.4265;
 let weatherLon = -71.0662;
-let currentStopId = '';
+let currentStopId = HARDCODED_STOP;
 let refreshInterval = null;
 let weatherInterval = null;
 
@@ -394,8 +361,7 @@ async function fetchWeather() {
 
 // ── FETCH HELPERS ────────────────────────────────────────────
 function apiUrl(path) {
-  const key = document.getElementById('api-key-input').value.trim();
-  return `${MBTA_API}${path}${path.includes('?') ? '&' : '?'}${key ? 'api_key=' + key : ''}`;
+  return `${MBTA_API}${path}`;
 }
 
 async function fetchJSON(url) {
@@ -404,24 +370,12 @@ async function fetchJSON(url) {
   return res.json();
 }
 
-// ── LOAD STOP ────────────────────────────────────────────────
-async function loadStop() {
-  const stopId = document.getElementById('stop-input').value.trim();
-  if (!stopId) return;
-  currentStopId = stopId;
-
+// ── AUTO LOAD ON START ───────────────────────────────────────
+async function init() {
   setStatus('loading', 'LOADING…');
-  document.getElementById('board').innerHTML = `
-    <div class="board-message">
-      <p><span class="spinner"></span>FETCHING LIVE DATA…</p>
-    </div>`;
 
-  if (refreshInterval) clearInterval(refreshInterval);
-  if (weatherInterval) clearInterval(weatherInterval);
-
-  // Pull stop coords to localize the weather
   try {
-    const stopData = await fetchJSON(apiUrl(`/stops/${stopId}`));
+    const stopData = await fetchJSON(apiUrl(`/stops/${currentStopId}`));
     const lat  = stopData.data?.attributes?.latitude;
     const lon  = stopData.data?.attributes?.longitude;
     const city = stopData.data?.attributes?.municipality || stopData.data?.attributes?.name || '';
@@ -487,20 +441,37 @@ async function fetchDepartures() {
       });
     });
 
-    const seen = {}, filtered = [];
-    for (const p of predictions) {
-      // Drop anything more than 60 minutes out
-      if (p.minsAway > 60) continue;
-      const key = `${p.routeId}_${p.dirId}`;
-      seen[key] = (seen[key] || 0) + 1;
-      // Allow up to 2 per route+direction, but don't let buses crowd out trains
-      // Give trains (type 0,1) and CR (type 2) up to 2 slots; buses up to 1
-      const maxSlots = p.routeType <= 2 ? 2 : 1;
-      if (seen[key] <= maxSlots) filtered.push(p);
+    // ── SLOT ALLOCATION ──────────────────────────────────────
+    // Strategy: guarantee at least 1 train per direction (inbound + outbound),
+    // then fill remaining slots with buses (max 3), then any leftover trains.
+    // Total cap: 5 displayed rows.
+
+    // Separate into trains/CR and buses
+    const trainPreds = predictions.filter(p => p.routeType <= 2 && p.minsAway <= 60);
+    const busPreds   = predictions.filter(p => p.routeType === 3 && p.minsAway <= 60);
+
+    // Guarantee 1 train per direction (dir 0 and dir 1)
+    const guaranteed = [];
+    const seenTrainDir = {};
+    for (const p of trainPreds) {
+      if (!seenTrainDir[p.dirId]) {
+        seenTrainDir[p.dirId] = true;
+        guaranteed.push(p);
+      }
     }
 
-    // Sort everything purely chronologically
-    filtered.sort((a, b) => a.secondsAway - b.secondsAway);
+    // Up to 3 buses
+    const buses = busPreds.slice(0, 3);
+
+    // Fill remaining slots (5 total minus guaranteed trains minus buses) with more trains
+    const usedIds = new Set(guaranteed.map(p => p.routeId + '_' + p.dirId + '_' + p.secondsAway));
+    const extraTrains = trainPreds.filter(p => !usedIds.has(p.routeId + '_' + p.dirId + '_' + p.secondsAway));
+    const slotsLeft = Math.max(0, 5 - guaranteed.length - buses.length);
+    const extras = extraTrains.slice(0, slotsLeft);
+
+    // Merge and sort chronologically
+    const filtered = [...guaranteed, ...extras, ...buses]
+      .sort((a, b) => a.secondsAway - b.secondsAway);
 
     renderBoard(filtered.slice(0, 5));
     setStatus('live', 'LIVE');
@@ -594,12 +565,11 @@ function setStatus(type, text) {
   el.textContent = text;
 }
 
-document.getElementById('stop-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') loadStop();
-});
-
 // Fetch weather immediately on page load with default Malden coords
 fetchWeather();
+
+// Auto-load the hardcoded stop on page open
+init();
 </script>
 </body>
 </html>
