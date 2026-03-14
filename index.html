@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MBTA Departure Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0e;
+    --panel: #111418;
+    --border: #1e2328;
+    --text: #e8eaed;
+    --dim: #7a8694;
+    --accent: #ffffff;
+    --red:    #da291c;
+    --orange: #ed8b00;
+    --green:  #00843d;
+    --blue:   #003da5;
+    --silver: #7c878e;
+    --cr:     #80276c;
+    --bus:    #ffc72c;
+    --bus-text: #0a0c0e;
+    --arriving: #00c46a;
+    --soon: #f5a623;
+    --later: #e8eaed;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Oswald', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 14px; }
+
+  .mbta-logo {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--blue);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: #fff;
+    letter-spacing: -1px; flex-shrink: 0;
+  }
+
+  .stop-info h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.1; }
+  .stop-info .stop-id { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--dim); margin-top: 2px; letter-spacing: 0.08em; }
+
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .clock { font-family: 'Share Tech Mono', monospace; font-size: 28px; color: var(--accent); letter-spacing: 0.05em; line-height: 1; }
+  .date-display { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--dim); letter-spacing: 0.06em; }
+
+  /* ── CONFIG BAR ── */
+  .config-bar {
+    background: #0d1014;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+
+  .config-bar label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); }
+
+  .config-bar input {
+    background: var(--border); border: 1px solid #2a3038;
+    color: var(--text); font-family: 'Share Tech Mono', monospace;
+    font-size: 13px; padding: 5px 10px; border-radius: 3px;
+    outline: none; transition: border-color 0.2s; width: 180px;
+  }
+  .config-bar input:focus { border-color: var(--blue); }
+
+  .btn {
+    background: var(--blue); color: #fff; border: none;
+    font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 6px 16px; border-radius: 3px; cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn:hover { background: #0050c8; }
+  .btn:active { transform: scale(0.97); }
+
+  .status-pill {
+    margin-left: auto; font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.06em;
+  }
+  .status-pill.live    { background: rgba(0,196,106,0.15); color: var(--arriving); border: 1px solid rgba(0,196,106,0.3); }
+  .status-pill.error   { background: rgba(218,41,28,0.15); color: #f07070; border: 1px solid rgba(218,41,28,0.3); }
+  .status-pill.loading { background: rgba(255,199,44,0.12); color: var(--bus); border: 1px solid rgba(255,199,44,0.3); }
+
+  /* ── WEATHER BAR ── */
+  .weather-bar {
+    background: #0d1014;
+    border-bottom: 1px solid var(--border);
+    padding: 7px 24px;
+    display: flex; align-items: center; gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .weather-bar .w-location {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 0.12em;
+    color: var(--dim); text-transform: uppercase;
+  }
+
+  .weather-bar .w-divider {
+    width: 1px; height: 14px; background: var(--border);
+  }
+
+  .weather-bar .w-icon { font-size: 18px; line-height: 1; }
+
+  .weather-bar .w-temp {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 20px; color: var(--accent); letter-spacing: -0.5px; line-height: 1;
+  }
+
+  .weather-bar .w-temp sup { font-size: 11px; vertical-align: super; color: var(--dim); }
+
+  .weather-bar .w-condition {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--dim);
+  }
+
+  /* ── CONTENT ROW ── */
+  .content-row { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+
+  /* ── MAIN BOARD ── */
+  .board {
+    flex: 1; padding: 16px 20px 20px;
+    display: flex; flex-direction: column; gap: 14px;
+    overflow-y: auto; min-width: 0;
+  }
+
+  /* ── SECTION HEADING ── */
+  .section-label { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .section-label span { font-size: 11px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--dim); }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── DEPARTURE ROW ── */
+  .departure-row {
+    background: var(--bg); border: 1px solid var(--border);
+    border-left: 4px solid var(--border); border-radius: 4px;
+    padding: 12px 16px; display: grid;
+    grid-template-columns: 56px 1fr auto;
+    align-items: center; gap: 12px;
+    animation: rowIn 0.35s ease both;
+    transition: background 0.2s;
+  }
+  .departure-row:hover { background: #161b22; }
+
+  @keyframes rowIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .route-pill {
+    width: 48px; height: 48px; border-radius: 8px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-weight: 700; line-height: 1.1;
+    letter-spacing: 0.02em; text-align: center; flex-shrink: 0;
+  }
+  .route-pill .route-num  { font-size: 18px; font-weight: 700; line-height: 1; }
+  .route-pill .route-type { font-size: 9px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.85; margin-top: 2px; }
+
+  .dep-middle { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+  .destination {
+    font-size: 19px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; line-height: 1.15;
+  }
+
+  .dep-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .dep-meta span { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--dim); letter-spacing: 0.06em; }
+  .dep-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--border); display: inline-block; }
+
+  .countdown { text-align: right; flex-shrink: 0; }
+  .countdown .mins { font-family: 'Share Tech Mono', monospace; font-size: 38px; font-weight: 400; line-height: 1; letter-spacing: -1px; }
+  .countdown .mins-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); margin-top: 2px; }
+  .countdown .arriving-now { font-size: 13px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--arriving); animation: blink 1s ease-in-out infinite; }
+
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .line-Red    { border-left-color: var(--red); }
+  .line-Orange { border-left-color: var(--orange); }
+  .line-Green, .line-Green-B, .line-Green-C, .line-Green-D, .line-Green-E { border-left-color: var(--green); }
+  .line-Blue   { border-left-color: var(--blue); }
+  .line-Silver { border-left-color: var(--silver); }
+  .line-Bus    { border-left-color: var(--bus); }
+  .line-CR     { border-left-color: var(--cr); }
+
+  .pill-Red    { background: var(--red);    color: #fff; }
+  .pill-Orange { background: var(--orange); color: #fff; }
+  .pill-Green, .pill-Green-B, .pill-Green-C, .pill-Green-D, .pill-Green-E { background: var(--green); color: #fff; }
+  .pill-Blue   { background: var(--blue);   color: #fff; }
+  .pill-Silver { background: var(--silver); color: #fff; }
+  .pill-Bus    { background: var(--bus);    color: var(--bus-text); }
+  .pill-CR     { background: var(--cr);     color: #fff; }
+
+  .mins-soon     { color: var(--soon); }
+  .mins-arriving { color: var(--arriving); }
+  .mins-normal   { color: var(--later); }
+
+  /* ── EMPTY / LOADING ── */
+  .board-message { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--dim); }
+  .board-message .big-icon { font-size: 48px; opacity: 0.3; }
+  .board-message p { font-family: 'Share Tech Mono', monospace; font-size: 13px; letter-spacing: 0.08em; text-align: center; line-height: 1.6; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border); padding: 8px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--panel); flex-shrink: 0;
+  }
+  footer .update-time { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--dim); letter-spacing: 0.06em; }
+
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .board::-webkit-scrollbar { width: 4px; }
+  .board::-webkit-scrollbar-track { background: transparent; }
+  .board::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="mbta-logo">T</div>
+    <div class="stop-info">
+      <h1 id="stop-name">MBTA Departure Board</h1>
+      <div class="stop-id" id="stop-id-display">Enter a stop ID below to load live departures</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="date-display" id="date-display">--- --, ----</div>
+  </div>
+</header>
+
+<div class="config-bar">
+  <label>STOP ID</label>
+  <input type="text" id="stop-input" placeholder="e.g. place-mlmnl" value="place-mlmnl">
+  <label>API KEY</label>
+  <input type="text" id="api-key-input" placeholder="Optional">
+  <button class="btn" onclick="loadStop()">▶ LOAD</button>
+  <span class="status-pill loading" id="status-pill">STANDBY</span>
+</div>
+
+<div class="weather-bar">
+  <div class="w-location" id="weather-location">MALDEN, MA</div>
+  <div class="w-divider"></div>
+  <div class="w-icon" id="weather-icon">🌡️</div>
+  <div class="w-temp" id="weather-temp">--<sup>°F</sup></div>
+  <div class="w-divider"></div>
+  <div class="w-condition" id="weather-condition">Loading...</div>
+</div>
+
+<div class="content-row">
+  <div class="board" id="board">
+    <div class="board-message">
+      <div class="big-icon">🚇</div>
+      <p>ENTER A STOP ID AND PRESS LOAD<br>TO SEE LIVE DEPARTURE PREDICTIONS</p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="update-time" id="update-time">Last updated: —</div>
+</footer>
+
+<script>
+const MBTA_API = 'https://api-v3.mbta.com';
+let weatherLat = 42.4265;
+let weatherLon = -71.0662;
+let currentStopId = '';
+let refreshInterval = null;
+let weatherInterval = null;
+
+const WMO = {
+  0:  { label: 'Clear Sky',          icon: '☀️' },
+  1:  { label: 'Mostly Clear',       icon: '🌤️' },
+  2:  { label: 'Partly Cloudy',      icon: '⛅' },
+  3:  { label: 'Overcast',           icon: '☁️' },
+  45: { label: 'Foggy',              icon: '🌫️' },
+  48: { label: 'Icy Fog',            icon: '🌫️' },
+  51: { label: 'Light Drizzle',      icon: '🌦️' },
+  53: { label: 'Drizzle',            icon: '🌦️' },
+  55: { label: 'Heavy Drizzle',      icon: '🌧️' },
+  61: { label: 'Light Rain',         icon: '🌧️' },
+  63: { label: 'Rain',               icon: '🌧️' },
+  65: { label: 'Heavy Rain',         icon: '🌧️' },
+  71: { label: 'Light Snow',         icon: '🌨️' },
+  73: { label: 'Snow',               icon: '❄️' },
+  75: { label: 'Heavy Snow',         icon: '❄️' },
+  77: { label: 'Snow Grains',        icon: '🌨️' },
+  80: { label: 'Light Showers',      icon: '🌦️' },
+  81: { label: 'Showers',            icon: '🌧️' },
+  82: { label: 'Heavy Showers',      icon: '⛈️' },
+  85: { label: 'Snow Showers',       icon: '🌨️' },
+  86: { label: 'Heavy Snow Showers', icon: '❄️' },
+  95: { label: 'Thunderstorm',       icon: '⛈️' },
+  96: { label: 'Hail Storm',         icon: '⛈️' },
+  99: { label: 'Heavy Hail Storm',   icon: '⛈️' },
+};
+
+// ── CLOCK ────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-US', { hour12: false });
+  document.getElementById('date-display').textContent =
+    now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── WEATHER ──────────────────────────────────────────────────
+async function fetchWeather() {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${weatherLat}&longitude=${weatherLon}&current=temperature_2m,weathercode&temperature_unit=fahrenheit&timezone=America%2FNew_York`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Weather fetch failed');
+    const data = await res.json();
+
+    const temp = Math.round(data.current.temperature_2m);
+    const code = data.current.weathercode;
+    const { label, icon } = WMO[code] || { label: 'Unknown', icon: '🌡️' };
+
+    document.getElementById('weather-icon').textContent = icon;
+    document.getElementById('weather-temp').innerHTML = `${temp}<sup>°F</sup>`;
+    document.getElementById('weather-condition').textContent = label;
+  } catch (err) {
+    console.warn('Weather error:', err);
+    document.getElementById('weather-condition').textContent = 'Unavailable';
+  }
+}
+
+// ── FETCH HELPERS ────────────────────────────────────────────
+function apiUrl(path) {
+  const key = document.getElementById('api-key-input').value.trim();
+  return `${MBTA_API}${path}${path.includes('?') ? '&' : '?'}${key ? 'api_key=' + key : ''}`;
+}
+
+async function fetchJSON(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── LOAD STOP ────────────────────────────────────────────────
+async function loadStop() {
+  const stopId = document.getElementById('stop-input').value.trim();
+  if (!stopId) return;
+  currentStopId = stopId;
+
+  setStatus('loading', 'LOADING…');
+  document.getElementById('board').innerHTML = `
+    <div class="board-message">
+      <p><span class="spinner"></span>FETCHING LIVE DATA…</p>
+    </div>`;
+
+  if (refreshInterval) clearInterval(refreshInterval);
+  if (weatherInterval) clearInterval(weatherInterval);
+
+  // Pull stop coords to localize the weather
+  try {
+    const stopData = await fetchJSON(apiUrl(`/stops/${stopId}`));
+    const lat  = stopData.data?.attributes?.latitude;
+    const lon  = stopData.data?.attributes?.longitude;
+    const city = stopData.data?.attributes?.municipality || stopData.data?.attributes?.name || '';
+    if (lat && lon) { weatherLat = lat; weatherLon = lon; }
+    if (city) document.getElementById('weather-location').textContent = city.toUpperCase() + ', MA';
+  } catch(e) { /* keep defaults */ }
+
+  await fetchWeather();
+  await fetchDepartures();
+
+  refreshInterval = setInterval(fetchDepartures, 15000);
+  weatherInterval = setInterval(fetchWeather, 5 * 60 * 1000);
+}
+
+// ── DEPARTURES ───────────────────────────────────────────────
+async function fetchDepartures() {
+  try {
+    const url = apiUrl(`/predictions?filter[stop]=${currentStopId}&include=route,trip,stop&sort=departure_time`);
+    const data = await fetchJSON(url);
+
+    const routes = {}, trips = {}, stops = {};
+    (data.included || []).forEach(item => {
+      if (item.type === 'route') routes[item.id] = item;
+      if (item.type === 'trip')  trips[item.id]  = item;
+      if (item.type === 'stop')  stops[item.id]  = item;
+    });
+
+    const firstStop = Object.values(stops)[0];
+    document.getElementById('stop-name').textContent =
+      (firstStop?.attributes?.name || currentStopId).toUpperCase();
+    document.getElementById('stop-id-display').textContent = `STOP · ${currentStopId}`;
+
+    const now = new Date();
+    const predictions = [];
+
+    (data.data || []).forEach(pred => {
+      const attrs   = pred.attributes;
+      const routeId = pred.relationships?.route?.data?.id;
+      const tripId  = pred.relationships?.trip?.data?.id;
+      const route   = routes[routeId] || {};
+      const trip    = trips[tripId]   || {};
+
+      const depTime = attrs.departure_time || attrs.arrival_time;
+      if (!depTime) return;
+
+      const depDate     = new Date(depTime);
+      const secondsAway = (depDate - now) / 1000;
+      if (secondsAway < -30) return;
+
+      const minsAway  = Math.max(0, Math.round(secondsAway / 60));
+      const routeType = route.attributes?.type ?? 3;
+      const headsign  = trip.attributes?.headsign || attrs.status || 'Unknown';
+      const dirId     = attrs.direction_id;
+      const dirName   = (route.attributes?.direction_names || [])[dirId] || (dirId === 0 ? 'Outbound' : 'Inbound');
+
+      predictions.push({
+        routeId, routeType,
+        shortName: route.attributes?.short_name || route.attributes?.long_name || routeId,
+        longName:  route.attributes?.long_name  || routeId,
+        headsign, dirName, dirId, minsAway, secondsAway,
+        status: attrs.status,
+        scheduleRelationship: attrs.schedule_relationship,
+      });
+    });
+
+    const seen = {}, filtered = [];
+    for (const p of predictions) {
+      const key = `${p.routeId}_${p.dirId}`;
+      seen[key] = (seen[key] || 0) + 1;
+      if (seen[key] <= 2) filtered.push(p);
+    }
+
+    renderBoard(filtered.slice(0, 10));
+    setStatus('live', 'LIVE');
+    document.getElementById('update-time').textContent =
+      `Last updated: ${now.toLocaleTimeString('en-US', { hour12: false })}`;
+
+  } catch (err) {
+    console.error(err);
+    setStatus('error', 'ERROR');
+    document.getElementById('board').innerHTML = `
+      <div class="board-message">
+        <div class="big-icon">⚠</div>
+        <p>COULD NOT FETCH DATA<br><span style="color:#888">${err.message}</span><br><br>
+        CHECK STOP ID · EXAMPLE: place-mlmnl</p>
+      </div>`;
+  }
+}
+
+// ── RENDER ───────────────────────────────────────────────────
+function renderBoard(predictions) {
+  const board = document.getElementById('board');
+  if (!predictions.length) {
+    board.innerHTML = `
+      <div class="board-message">
+        <div class="big-icon">🚏</div>
+        <p>NO UPCOMING DEPARTURES<br><span style="color:#888">Service may have ended for the day</span></p>
+      </div>`;
+    return;
+  }
+
+  const subway = predictions.filter(p => [0,1].includes(p.routeType));
+  const cr     = predictions.filter(p => p.routeType === 2);
+  const bus    = predictions.filter(p => p.routeType === 3);
+  const other  = predictions.filter(p => ![0,1,2,3].includes(p.routeType));
+
+  let html = '';
+  if (subway.length) html += sectionHTML('🚇 SUBWAY & LIGHT RAIL', subway);
+  if (cr.length)     html += sectionHTML('🚆 COMMUTER RAIL', cr);
+  if (bus.length)    html += sectionHTML('🚌 BUS', bus);
+  if (other.length)  html += sectionHTML('⛴ OTHER', other);
+
+  board.innerHTML = html;
+}
+
+function sectionHTML(title, preds) {
+  let html = `<div><div class="section-label"><span>${title}</span></div>`;
+  preds.forEach((p, i) => { html += rowHTML(p, i); });
+  html += '</div>';
+  return html;
+}
+
+function getRouteClass(routeId, routeType) {
+  if (routeType === 3) return 'Bus';
+  if (routeType === 2) return 'CR';
+  if (routeId.startsWith('Green')) return routeId;
+  return routeId.replace('line-', '');
+}
+
+function getShortName(routeId, routeType, shortName) {
+  if (routeType === 3) return shortName || routeId;
+  if (routeType === 2) return 'CR';
+  if (routeId.startsWith('Green-')) return routeId.replace('Green-', 'GL·');
+  return routeId.replace('line-', '');
+}
+
+function rowHTML(p, i) {
+  const cls        = getRouteClass(p.routeId, p.routeType);
+  const shortLabel = getShortName(p.routeId, p.routeType, p.shortName);
+  const typeLabel  = p.routeType === 3 ? 'Bus' : p.routeType === 2 ? 'Rail' : 'Train';
+
+  let countdownHTML;
+  if (p.status === 'Now boarding' || p.secondsAway < 60) {
+    countdownHTML = `<div class="arriving-now">BRD</div>`;
+  } else if (p.status === 'Approaching') {
+    countdownHTML = `<div class="arriving-now">ARR</div>`;
+  } else {
+    const mc = p.minsAway <= 1 ? 'mins-arriving' : p.minsAway <= 5 ? 'mins-soon' : 'mins-normal';
+    countdownHTML = `<div class="mins ${mc}">${p.minsAway}</div><div class="mins-label">MIN</div>`;
+  }
+
+  const schedTag = p.scheduleRelationship === 'ADDED'   ? '· <span style="color:#f5a623">EXTRA</span>' :
+                   p.scheduleRelationship === 'SKIPPED' ? '· <span style="color:#da291c">SKIP</span>'  : '';
+
+  return `
+  <div class="departure-row line-${cls}" style="animation-delay:${i * 0.05}s">
+    <div class="route-pill pill-${cls}">
+      <div class="route-num">${shortLabel}</div>
+      <div class="route-type">${typeLabel}</div>
+    </div>
+    <div class="dep-middle">
+      <div class="destination">${p.headsign}</div>
+      <div class="dep-meta">
+        <span>${p.dirName}</span><span class="dot"></span>
+        <span>${p.longName}</span>${schedTag}
+      </div>
+    </div>
+    <div class="countdown">${countdownHTML}</div>
+  </div>`;
+}
+
+function setStatus(type, text) {
+  const el = document.getElementById('status-pill');
+  el.className = `status-pill ${type}`;
+  el.textContent = text;
+}
+
+document.getElementById('stop-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadStop();
+});
+
+// Fetch weather immediately on page load with default Malden coords
+fetchWeather();
+</script>
+</body>
+</html>
